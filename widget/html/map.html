@@ -1,0 +1,131 @@
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="maximum-scale=1.0, minimum-scale=1.0, user-scalable=0, initial-scale=1.0, width=device-width" />
+    <meta name="format-detection" content="telephone=no, email=no, date=no, address=no">
+    <title>Hello APP</title>
+    <link rel="stylesheet" type="text/css" href="../css/api.css" />
+    <style>
+        label {
+            margin: 10px;
+            font-size: 24px;
+        }
+
+        ul {
+            margin-bottom: 10px;
+        }
+
+        ul li {
+            margin: 5px 10px;
+            padding: 5px;
+            color: #000;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+
+<body>
+    <label>Hello APP</label>
+    <div id='sys-info'></div>
+    <button type="button" name="button" tapmode onclick="startNavi();">开始导航</button>
+</body>
+<script type="text/javascript" src="../script/api.js"></script>
+<script type="text/javascript">
+    var aMapLocation = null;
+    var aMapNavi = null;
+    var speechRecognizer = null;
+    var curLog = 0;
+    var curLat = 0;
+    apiready = function() {
+      //初始化所有用到模块的对象
+      // speechRecognizer = api.require('speechRecognizer');  //文本转语音
+      aMapLocation = api.require('aMapLocation');  //定位
+      aMapNavi = api.require('aMapNavigation');   //导航
+    };
+    function startNavi(){
+      if(!aMapLocation){
+        aMapLocation = api.require('aMapLocation');  //定位
+      }
+      if (!aMapNavi)
+          aMapNavi = api.require('aMapNavigation');
+      var wayPoints = []; //途径站点坐标数组 JSON数组
+        GetLocation(function(ret, err) {
+            //{"status":true,"latitude":30.717652,"longitude":104.043279,"timestamp":1501134578}
+            console.log('getlocation ret = ' + JSON.stringify(ret) + ', err = ' + JSON.stringify(err));
+            if (ret && ret.status) {
+                curLog = ret.longitude;
+                curLat = ret.latitude;
+                console.log(curLat);
+                openNavi(curLog, curLat, 116.4039258531, 39.9078306577, wayPoints);
+            }
+        });
+      ListenNavi();
+    }
+    function openNavi(curLon, curLat, tarLon, tarLat, wayPoints) {
+      console.log('curLon = ' +curLon + ', curLat = ' + curLat+ ', tarLon = ' + tarLon+ ', tarLat = ' + tarLat);
+        aMapNavi.start({
+            start: {
+                lon: curLon,
+                lat: curLat
+            },
+            end: {
+                lon: tarLon,
+                lat: tarLat
+            },
+            wayPoint: wayPoints,
+            type: 'drive',
+            strategy: 'fast',
+            mode: 'GPS', //GPS导航 emulator 模拟导航
+            styles: {
+                image: {
+                    start: 'fs://nav/start.png',
+                    end: 'fs://nav/end.png',
+                    way: 'fs://nav/way.png',
+                    camera: 'fs://nav/camera.png'
+                },
+                preference: {
+                    night: false,
+                    compass: false,
+                    crossImg: false,
+                    degree: 30,
+                    yawReCal: false,
+                    jamReCal: false,
+                    alwaysBright: true
+                }
+            }
+        }, function(ret, err) {
+            console.log("navi ret = " + JSON.stringify(ret) + ', err = ' + JSON.stringify(err));
+        });
+    }
+    function ListenNavi() {
+        //仅仅安卓版本需要自己完成文本播报,IOS不需要.
+        if (api.systemType == "ios")
+            return;
+
+        console.log('开启导航提示');
+        aMapNavi.navigationTextListener({
+            state: true
+        }, function(ret, err) {
+            //这里测试版的时候，第一次或者前N次会有问题，会有不回调的情况，但是正式版应该就OK了。。
+            //{"text":"准备出发，全程二十一点九公里大约需要三十五分钟"}  //这个是ret返回数据的格式
+            console.log('listen ret = ' + JSON.stringify(ret) + ', err = ' + JSON.stringify(err));
+            //播放语音
+            // AndroidVoiceReport(ret.text);
+        });
+    }
+    function GetLocation(callback) {
+        if (!aMapLocation)
+            aMapLocation = api.require('aMapLocation');
+        aMapLocation.startLocation({
+            accuracy: 100,
+            filter: 1,
+            autoStop: true
+        }, function(ret, err) {
+            callback.call(this, ret, err);
+        });
+    }
+</script>
+
+</html>
